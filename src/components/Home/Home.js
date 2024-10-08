@@ -84,9 +84,10 @@ const Home = () => {
 
       service.nearbySearch(request, (results, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-          fetchedResources[place.name] = results.length > 0 ? results[0] : null; // Store the nearest result
+          fetchedResources[place?.name] =
+            results?.length > 0 ? results[0] : null; // Store the nearest result
         }
-        if (Object.keys(fetchedResources).length === placeTypes.length) {
+        if (Object.keys(fetchedResources)?.length === placeTypes?.length) {
           setResources(fetchedResources);
           setLoading(false);
         }
