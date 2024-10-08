@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Collapse,
+  Divider,
   Avatar,
   Tooltip,
 } from "@mui/material";
@@ -25,8 +25,6 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import CommentIcon from "@mui/icons-material/Comment";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { styled } from "@mui/material/styles";
 import {
   collection,
   addDoc,
@@ -38,29 +36,21 @@ import {
 import { db, auth } from "../../../firebase";
 import Googlemap from "../../GoogleMap/GoogleMap";
 
-const ExpandMore = styled((props) => {
-  const { expand, ...other } = props;
-  return <IconButton {...other} />;
-})(({ theme, expand }) => ({
-  transform: expand ? "rotate(180deg)" : "rotate(0deg)",
-  marginLeft: "auto",
-  transition: theme.transitions.create("transform", {
-    duration: theme.transitions.duration.shortest,
-  }),
-}));
-
 const ResourceCard = ({ resource, onResourceUpdated }) => {
   const [likes, setLikes] = useState(resource.likes || 0);
   const [liked, setLiked] = useState(false);
   const [comments, setComments] = useState([]);
-  const [expanded, setExpanded] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [showHours, setShowHours] = useState(false);
+  const [showHours, setShowHours] = useState(null);
   const [editComment, setEditComment] = useState(null);
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
-  const [directionsVisible, setDirectionsVisible] = useState(false);
+  const [directionsVisible, setDirectionsVisible] = useState({});
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchComments = useCallback(async () => {
+    setLoading(true);
     try {
       const commentsSnapshot = await getDocs(
         collection(db, `resources/${resource.id}/comments`)
@@ -72,6 +62,9 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
       setComments(commentsList);
     } catch (error) {
       console.error("Error fetching comments:", error);
+      setError("Failed to load comments.");
+    } finally {
+      setLoading(false);
     }
   }, [resource.id]);
 
@@ -85,6 +78,7 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
       if (onResourceUpdated) onResourceUpdated(resource.id, newLikes);
     } catch (error) {
       console.error("Error updating likes:", error);
+      setError("Failed to update likes.");
     }
   };
 
@@ -98,7 +92,10 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
       navigator
         .share(shareData)
         .then(() => console.log("Resource shared successfully."))
-        .catch((error) => console.error("Error sharing:", error));
+        .catch((error) => {
+          console.error("Error sharing:", error);
+          setError("Failed to share resource.");
+        });
     } else {
       alert(`Resource: ${resource.name} copied to clipboard!`);
       navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
@@ -107,6 +104,7 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
 
   const handleCommentSubmit = async () => {
     if (newComment.trim() === "") return;
+    setLoading(true);
     try {
       if (editComment) {
         await updateDoc(
@@ -126,6 +124,9 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
       setCommentDialogOpen(false);
     } catch (error) {
       console.error("Error submitting comment:", error);
+      setError("Failed to submit comment.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,216 +142,310 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
       fetchComments();
     } catch (error) {
       console.error("Error deleting comment:", error);
+      setError("Failed to delete comment.");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchComments();
-    // Check if user has liked this resource (optional, based on your implementation)
-    setLiked(false); // Assuming you have logic to determine if the user liked it
+    setLiked(false);
   }, [fetchComments]);
 
-  const handleExpandClick = () => {
-    setExpanded(!expanded);
+  const toggleDirections = (resourceId) => {
+    setDirectionsVisible((prev) => ({
+      ...prev,
+      [resourceId]: !prev[resourceId],
+    }));
   };
 
   return (
-    <Card
-      sx={{
-        maxWidth: 345,
-        margin: "auto",
-        borderRadius: 2,
-        boxShadow: 3,
-        transition: "transform 0.3s",
-        "&:hover": {
-          transform: "scale(1.03)",
-        },
-      }}
-    >
-      <CardHeader
-        avatar={
-          <Avatar aria-label="resource" sx={{ bgcolor: "#8e24aa" }}>
-            {resource.name.charAt(0)}
-          </Avatar>
-        }
-        title={resource.name}
-        subheader={resource.status}
-      />
-      {resource.photoUrl ? (
-        <CardMedia
-          component="img"
-          height="194"
-          image={resource.photoUrl}
-          alt={resource.name}
-        />
-      ) : (
-        <CardMedia
-          component="img"
-          height="194"
-          image="https://via.placeholder.com/400x300.png?text=No+Image+Available"
-          alt={resource.name}
-        />
-      )}
-      <CardContent>
-        <Typography variant="body2" color="textSecondary">
-          {resource.address}
-        </Typography>
-        <Box sx={{ mt: 1, display: "flex", alignItems: "center" }}>
-          <PhoneIcon sx={{ mr: 1 }} color="action" />
-          <Typography variant="body2">{resource.phone}</Typography>
-        </Box>
-        <Box sx={{ mt: 1, display: "flex", alignItems: "center" }}>
-          <EmailIcon sx={{ mr: 1 }} color="action" />
-          <Typography variant="body2">{resource.email}</Typography>
-        </Box>
-      </CardContent>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          pl: 2,
-          pb: 1,
-          pr: 2,
-          justifyContent: "space-between",
-        }}
-      >
-        <Box>
-          <Tooltip title="Like">
-            <IconButton onClick={handleLike} color={liked ? "error" : "default"}>
-              {liked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Comments">
-            <IconButton onClick={() => setCommentDialogOpen(true)}>
-              <CommentIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Operating Hours">
-            <IconButton onClick={() => setShowHours(true)}>
-              <AccessTimeIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Share">
-            <IconButton onClick={handleShare}>
-              <ShareIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Directions">
-            <IconButton onClick={() => setDirectionsVisible(!directionsVisible)}>
-              <DirectionsIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-        <ExpandMore
-          expand={expanded}
-          onClick={handleExpandClick}
-          aria-expanded={expanded}
-          aria-label="show more"
+    <>
+      {resource?.map((resource, index) => (
+        <Card
+          key={index}
+          sx={{
+            maxWidth: 345,
+            margin: "auto",
+            borderRadius: "10px",
+            backgroundColor: "#f5f5f5",
+            boxShadow: "5px 5px 10px #d3d3d3 ",
+            "&:hover": {
+              transform: "scale(1.05)",
+              transition: "0.3s",
+            },
+          }}
         >
-          <ExpandMoreIcon />
-        </ExpandMore>
-      </Box>
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <CardContent>
-          <Typography paragraph>Operating Hours:</Typography>
-          {resource.time ? (
-            resource.time.split(", ").map((time, index) => (
-              <Typography key={index} variant="body2" color="textSecondary">
-                {time}
-              </Typography>
-            ))
+          <CardHeader
+            avatar={
+              <Avatar aria-label="resource" sx={{ bgcolor: "#8e24aa" }}>
+                {resource.name.charAt(0)}
+              </Avatar>
+            }
+            title={resource.name}
+          />
+          {resource.photoUrl ? (
+            <CardMedia
+              component="img"
+              height="194"
+              image={resource.photoUrl}
+              alt={resource.name}
+            />
           ) : (
-            <Typography variant="body2" color="textSecondary">
-              No operating hours available.
+            <CardMedia
+              component="img"
+              height="194"
+              image="https://via.placeholder.com/400x300.png?text=No+Image+Available"
+              alt={resource.name}
+            />
+          )}
+
+          <CardContent>
+            <Typography
+              variant="body2"
+              sx={{ mt: 1, mb: 1, textAlign: "left" }}
+            >
+              <strong>Address : </strong> {resource.address}
             </Typography>
-          )}
-        </CardContent>
-      </Collapse>
-      {directionsVisible && (
-        <Box sx={{ mt: 2 }}>
-          <Googlemap
-            center={{ lat: resource.lat, lng: resource.lng }}
-            destination={{ lat: resource.lat, lng: resource.lng }}
-            directions={true}
-          />
-        </Box>
-      )}
+            <Divider />
 
-      {/* Comments Dialog */}
-      <Dialog open={commentDialogOpen} onClose={() => setCommentDialogOpen(false)}>
-        <DialogTitle>{editComment ? "Edit Comment" : "Add a Comment"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Your Comment"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            multiline
-            rows={4}
-          />
-          <Box sx={{ mt: 2 }}>
-            {comments.map((comment) => (
-              <Box key={comment.id} sx={{ mb: 2 }}>
-                <Typography variant="subtitle2">{comment.user}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {comment.text}
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 1,
-                    mt: 1,
-                  }}
-                >
-                  <Button
-                    size="small"
-                    onClick={() => handleEditComment(comment)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => handleDeleteComment(comment.id)}
-                    color="error"
-                  >
-                    Delete
-                  </Button>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCommentDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleCommentSubmit}
-            variant="contained"
-            color="primary"
+            <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
+              <EmailIcon sx={{ mr: 1 }} color="error" />
+              {resource.email}
+            </Box>
+
+            <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
+              <PhoneIcon sx={{ mr: 1 }} />
+              {resource.phone}
+            </Box>
+          </CardContent>
+
+          <Box
+            sx={{
+              p: 1,
+              display: "flex",
+              alignItems: "center",
+            }}
           >
-            {editComment ? "Update" : "Submit"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <Tooltip title="Like">
+              <IconButton
+                onClick={handleLike}
+                color={liked ? "error" : "default"}
+              >
+                {liked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip
+              title="Comments"
+              onClick={() => setCommentDialogOpen(true)}
+            >
+              <IconButton>
+                <CommentIcon color="primary" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Operating Hours">
+              <IconButton onClick={() => setShowHours(index)}>
+                <AccessTimeIcon color="warning" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Share">
+              <IconButton onClick={handleShare}>
+                <ShareIcon color="success" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Directions">
+              <IconButton onClick={() => toggleDirections(index)}>
+                <DirectionsIcon color="info" />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
-      {/* Operating Hours Dialog */}
-      <Dialog open={showHours} onClose={() => setShowHours(false)}>
-        <DialogTitle>Operating Hours</DialogTitle>
-        <DialogContent>
-          {resource.time ? (
-            resource.time.split(", ").map((time, index) => (
-              <Typography key={index}>{time}</Typography>
-            ))
-          ) : (
-            <Typography>No operating hours available.</Typography>
+          {directionsVisible[index] && (
+            <Box sx={{ mt: 2 }}>
+              <Googlemap
+                center={{ lat: resource.lat, lng: resource.lng }}
+                destination={{ lat: resource.lat, lng: resource.lng }}
+                directions={true}
+              />
+            </Box>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowHours(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </Card>
+          <Dialog
+            fullWidth
+            open={commentDialogOpen}
+            onClose={() => {
+              setCommentDialogOpen(false);
+              setNewComment("");
+              setEditComment(false);
+            }}
+          >
+            <DialogTitle
+              sx={{ bgcolor: "#f5f5f5", color: "#333", textAlign: "center" }}
+            >
+              {editComment ? "Edit Comment" : "Add a Comment"}
+            </DialogTitle>
+
+            <Divider />
+
+            <DialogContent dividers sx={{ py: 3 }}>
+              <Box sx={{ mb: 3 }}>
+                {comments.length > 0 ? (
+                  comments.map((comment) => (
+                    <Box
+                      key={comment.id}
+                      sx={{
+                        mb: 2,
+                        bgcolor: "#f9f9f9",
+                        p: 2,
+                        borderRadius: 1,
+                        boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: "bold" }}
+                      >
+                        {comment.user}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="textSecondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {comment.text}
+                      </Typography>
+                      <Box
+                        sx={{
+                          gap: 1,
+                          display: "flex",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          onClick={() => handleEditComment(comment)}
+                          variant="outlined"
+                          sx={{ textTransform: "none" }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => handleDeleteComment(comment.id)}
+                          color="error"
+                          variant="outlined"
+                          sx={{ textTransform: "none" }}
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </Box>
+                  ))
+                ) : (
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    sx={{ textAlign: "center" }}
+                  >
+                    No Comments Available
+                  </Typography>
+                )}
+              </Box>
+
+              <TextField
+                rows={4}
+                fullWidth
+                multiline
+                sx={{ mb: 2 }}
+                variant="outlined"
+                value={newComment}
+                label="Your Comment"
+                onChange={(e) => setNewComment(e.target.value)}
+              />
+            </DialogContent>
+
+            <Divider />
+
+            <DialogActions sx={{ py: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setCommentDialogOpen(false);
+                }}
+                sx={{ color: "#333", textTransform: "none" }}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                variant="contained"
+                onClick={handleCommentSubmit}
+                sx={{ textTransform: "none" }}
+              >
+                {editComment ? "Update" : "Submit"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            fullWidth
+            open={showHours === index}
+            onClose={() => setShowHours(null)}
+          >
+            <DialogTitle
+              sx={{
+                bgcolor: "#f5f5f5",
+                color: "#333",
+                textAlign: "center",
+                fontWeight: "bold",
+                fontSize: "18px",
+              }}
+            >
+              {resource.name} Operating Hours
+            </DialogTitle>
+
+            <Divider />
+
+            <DialogContent dividers sx={{ py: 3 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {resource.time.split(", ").map((time, idx) => (
+                  <Typography
+                    key={idx}
+                    variant="body1"
+                    sx={{
+                      fontSize: "16px",
+                      color: "#555",
+                      textAlign: "center",
+                    }}
+                  >
+                    {time}
+                  </Typography>
+                ))}
+              </Box>
+            </DialogContent>
+
+            <Divider />
+
+            <DialogActions sx={{ py: 2 }}>
+              <Button
+                onClick={() => setShowHours(null)}
+                variant="contained"
+                sx={{
+                  bgcolor: "#1976d2",
+                  color: "#fff",
+                  "&:hover": {
+                    bgcolor: "#115293",
+                  },
+                  px: 4,
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Card>
+      ))}
+    </>
   );
 };
 

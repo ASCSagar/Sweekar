@@ -11,7 +11,7 @@ const ResourceList = () => {
   const [resources, setResources] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const displayedResources = resources.slice(
+  const paginateResources = resources.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -24,6 +24,7 @@ const ResourceList = () => {
       >
         Near By{" "}
         {category
+          .replace("lgbtq_", "")
           .split(" ")
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
           .join(" ")}{" "}
@@ -58,10 +59,8 @@ const ResourceList = () => {
           justifyContent: "center",
         }}
       >
-        {displayedResources.length > 0 ? (
-          displayedResources.map((resource, index) => (
-            <ResourceCard key={index} resource={resource} category={category} />
-          ))
+        {paginateResources.length > 0 ? (
+          <ResourceCard resource={paginateResources} category={category} />
         ) : (
           <Typography variant="h6" sx={{ textAlign: "center", mt: 4 }}>
             No {category} Resources Found Near By
