@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -10,54 +11,36 @@ import {
   CardActions,
 } from "@mui/material";
 import logo from "../../images/logo.png";
-import { auth, signInWithPopup, googleProvider } from "../../firebase";
+import { auth } from "../../firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const Login = () => {
+  // Initialize Google Provider
+  const googleProvider = new GoogleAuthProvider();
   const navigate = useNavigate();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallButton, setShowInstallButton] = useState(false);
 
-  // Function to handle Google Login
-  const handleGoogleLogin = async () => {
+  // Function to handle Google sign-in
+  const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      // This gives you a Google Access Token. You can use it to access the Google API.
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential.accessToken;
+      console.log("----token---->", token);
       console.log("User Info:", result.user);
+      toast.success("Login Successful");
       navigate("/");
     } catch (error) {
-      console.error("Error during sign in:", error);
-    }
-  };
-
-  // Listen for the 'beforeinstallprompt' event
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setDeferredPrompt(event); // Save the event for later use
-      setShowInstallButton(true); // Show install button
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    return () =>
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
+      // Handle Errors here.
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      const email = error.customData.email;
+      console.error(
+        "Error during Google Sign-In:",
+        errorCode,
+        errorMessage,
+        email
       );
-  }, []);
-
-  // Function to handle PWA installation
-  const handleInstallClick = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === "accepted") {
-          console.log("User accepted the install prompt");
-        } else {
-          console.log("User dismissed the install prompt");
-        }
-        setDeferredPrompt(null);
-        setShowInstallButton(false);
-      });
     }
   };
 
@@ -74,7 +57,6 @@ const Login = () => {
         padding: 2,
       }}
     >
-      {/* Card for the login content */}
       <Card
         sx={{
           width: 400,
@@ -95,7 +77,6 @@ const Login = () => {
             justifyContent: "center",
           }}
         >
-          {/* Logo at the center */}
           <Avatar
             alt="Logo"
             src={logo}
@@ -110,37 +91,28 @@ const Login = () => {
           />
 
           <Typography variant="h4" gutterBottom>
-            Welcome to Sweekar
+            Welcome To Sweekar
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Please sign in to continue
+            Please SignIn To Continue
           </Typography>
         </CardContent>
 
-        {/* Google Sign-In Button */}
         <CardActions sx={{ justifyContent: "center" }}>
           <Button
             variant="contained"
             color="primary"
-            onClick={handleGoogleLogin}
             sx={{ width: "200px", height: "50px" }}
+            onClick={handleGoogleSignIn}
           >
-            Sign in with Google
+            SignIn With Google
           </Button>
         </CardActions>
       </Card>
 
-      {/* Install PWA Button */}
-      {showInstallButton && (
-        <Button
-          variant="outlined"
-          color="success"
-          onClick={handleInstallClick}
-          sx={{ mt: 3 }}
-        >
-          Install App
-        </Button>
-      )}
+      <Button variant="outlined" color="success" sx={{ mt: 3 }}>
+        Install App
+      </Button>
     </Box>
   );
 };

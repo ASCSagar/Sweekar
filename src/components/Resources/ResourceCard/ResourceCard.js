@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
+import { toast } from "react-toastify"; 
 import {
   Card,
   CardContent,
@@ -18,7 +19,6 @@ import {
   Tooltip,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import ShareIcon from "@mui/icons-material/Share";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -26,134 +26,113 @@ import EmailIcon from "@mui/icons-material/Email";
 import CommentIcon from "@mui/icons-material/Comment";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
-import { db, auth } from "../../../firebase";
+  getDatabase,
+  ref,
+  set,
+  onValue,
+  push,
+  remove,
+} from "firebase/database";
+import { auth } from "../../../firebase";
 import Googlemap from "../../GoogleMap/GoogleMap";
 
-const ResourceCard = ({ resource, onResourceUpdated }) => {
-  const [likes, setLikes] = useState(resource.likes || 0);
-  const [liked, setLiked] = useState(false);
+const ResourceCard = ({ resource }) => {
+  const user = auth.currentUser; // Get current logged-in user
+
+  const [open, setOpen] = useState(false);
+  const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
+  const [currentResource, setCurrentResource] = useState(null);
   const [showHours, setShowHours] = useState(null);
-  const [editComment, setEditComment] = useState(null);
-  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [editComment, setEditComment] = useState(false);
+  const [currentCommentId, setCurrentCommentId] = useState(null);
   const [directionsVisible, setDirectionsVisible] = useState({});
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const handleClickOpen = (resource) => {
+    setCurrentResource(resource);
+    setOpen(true);
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const commentsSnapshot = await getDocs(
-        collection(db, `resources/${resource.id}/comments`)
-      );
-      const commentsList = commentsSnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
-      setComments(commentsList);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      setError("Failed to load comments.");
-    } finally {
-      setLoading(false);
-    }
-  }, [resource.id]);
-
-  const handleLike = async () => {
-    try {
-      const resourceRef = doc(db, "resources", resource.id);
-      const newLikes = liked ? likes - 1 : likes + 1;
-      await updateDoc(resourceRef, { likes: newLikes });
-      setLikes(newLikes);
-      setLiked(!liked);
-      if (onResourceUpdated) onResourceUpdated(resource.id, newLikes);
-    } catch (error) {
-      console.error("Error updating likes:", error);
-      setError("Failed to update likes.");
-    }
+    // Fetch comments for the selected resource from Firebase
+    const db = getDatabase();
+    const commentsRef = ref(db, `comments/${resource.name}`);
+    onValue(commentsRef, (snapshot) => {
+      const data = snapshot.val();
+      const fetchedComments = data
+        ? Object.entries(data).map(([key, value]) => ({ id: key, ...value }))
+        : [];
+      setComments(fetchedComments);
+    });
   };
 
-  const handleShare = () => {
-    const shareData = {
-      title: resource.name,
-      text: `Check out this resource: ${resource.name} located at ${resource.address}.`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      navigator
-        .share(shareData)
-        .then(() => console.log("Resource shared successfully."))
-        .catch((error) => {
-          console.error("Error sharing:", error);
-          setError("Failed to share resource.");
-        });
-    } else {
-      alert(`Resource: ${resource.name} copied to clipboard!`);
-      navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-    }
+  const handleClose = () => {
+    setOpen(false);
+    setComment("");
+    setEditComment(false);
+    setCurrentCommentId(null);
   };
 
-  const handleCommentSubmit = async () => {
-    if (newComment.trim() === "") return;
-    setLoading(true);
-    try {
-      if (editComment) {
-        await updateDoc(
-          doc(db, `resources/${resource.id}/comments`, editComment.id),
-          { text: newComment }
+  const handleSubmit = () => {
+    const db = getDatabase();
+
+    if (user) {
+      if (editComment && currentCommentId) {
+        const commentRef = ref(
+          db,
+          `comments/${currentResource.name}/${currentCommentId}`
         );
-        setEditComment(null);
+        set(commentRef, {
+          userName: user.displayName || "Anonymous",
+          comment,
+          time: new Date().toLocaleString(),
+        })
+          .then(() => {
+            toast.success("Comment Updated Successfully!");
+            handleClose();
+          })
+          .catch((error) => {
+            toast.error("Failed To Update Comment: " + error.message);
+          });
       } else {
-        await addDoc(collection(db, `resources/${resource.id}/comments`), {
-          text: newComment,
-          user: auth.currentUser?.displayName || "Anonymous",
-          createdAt: new Date().toISOString(),
-        });
+        const commentsRef = ref(db, `comments/${currentResource.name}`);
+        const newCommentRef = push(commentsRef);
+
+        set(newCommentRef, {
+          userName: user.displayName || "Anonymous",
+          comment,
+          time: new Date().toLocaleString(),
+        })
+          .then(() => {
+            toast.success("Comment Added Successfully!");
+            handleClose();
+          })
+          .catch((error) => {
+            toast.error("Failed To Add Comment: " + error.message);
+          });
       }
-      setNewComment("");
-      fetchComments();
-      setCommentDialogOpen(false);
-    } catch (error) {
-      console.error("Error submitting comment:", error);
-      setError("Failed to submit comment.");
-    } finally {
-      setLoading(false);
+    } else {
+      toast.info("Please LogIn To Submit A Comment.");
     }
   };
 
-  const handleEditComment = (comment) => {
-    setEditComment(comment);
-    setNewComment(comment.text);
-    setCommentDialogOpen(true);
+  const handleDelete = (commentId) => {
+    const db = getDatabase();
+    const commentRef = ref(db, `comments/${currentResource.name}/${commentId}`);
+    remove(commentRef)
+      .then(() => {
+        toast.success("Comment Deleted Successfully!");
+      })
+      .catch((error) => {
+        toast.error("Error Deleting Comment: " + error.message);
+      });
   };
 
-  const handleDeleteComment = async (commentId) => {
-    try {
-      await deleteDoc(doc(db, `resources/${resource.id}/comments`, commentId));
-      fetchComments();
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      setError("Failed to delete comment.");
-    } finally {
-      setLoading(false);
-    }
+  const handleEdit = (item) => {
+    setComment(item.comment);
+    setCurrentCommentId(item.id);
+    setEditComment(true);
   };
 
-  useEffect(() => {
-    fetchComments();
-    setLiked(false);
-  }, [fetchComments]);
-
-  const toggleDirections = (resourceId) => {
+  const handleDirections = (resourceId) => {
     setDirectionsVisible((prev) => ({
       ...prev,
       [resourceId]: !prev[resourceId],
@@ -229,18 +208,12 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
             }}
           >
             <Tooltip title="Like">
-              <IconButton
-                onClick={handleLike}
-                color={liked ? "error" : "default"}
-              >
-                {liked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+              <IconButton color={"error"}>
+                <FavoriteIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip
-              title="Comments"
-              onClick={() => setCommentDialogOpen(true)}
-            >
-              <IconButton>
+            <Tooltip title="Comments">
+              <IconButton onClick={() => handleClickOpen(resource)}>
                 <CommentIcon color="primary" />
               </IconButton>
             </Tooltip>
@@ -250,12 +223,12 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
               </IconButton>
             </Tooltip>
             <Tooltip title="Share">
-              <IconButton onClick={handleShare}>
+              <IconButton>
                 <ShareIcon color="success" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Directions">
-              <IconButton onClick={() => toggleDirections(index)}>
+              <IconButton onClick={() => handleDirections(index)}>
                 <DirectionsIcon color="info" />
               </IconButton>
             </Tooltip>
@@ -270,122 +243,6 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
               />
             </Box>
           )}
-          <Dialog
-            fullWidth
-            open={commentDialogOpen}
-            onClose={() => {
-              setCommentDialogOpen(false);
-              setNewComment("");
-              setEditComment(false);
-            }}
-          >
-            <DialogTitle
-              sx={{ bgcolor: "#f5f5f5", color: "#333", textAlign: "center" }}
-            >
-              {editComment ? "Edit Comment" : "Add a Comment"}
-            </DialogTitle>
-
-            <Divider />
-
-            <DialogContent dividers sx={{ py: 3 }}>
-              <Box sx={{ mb: 3 }}>
-                {comments.length > 0 ? (
-                  comments.map((comment) => (
-                    <Box
-                      key={comment.id}
-                      sx={{
-                        mb: 2,
-                        bgcolor: "#f9f9f9",
-                        p: 2,
-                        borderRadius: 1,
-                        boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ fontWeight: "bold" }}
-                      >
-                        {comment.user}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="textSecondary"
-                        sx={{ mb: 1 }}
-                      >
-                        {comment.text}
-                      </Typography>
-                      <Box
-                        sx={{
-                          gap: 1,
-                          display: "flex",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <Button
-                          size="small"
-                          onClick={() => handleEditComment(comment)}
-                          variant="outlined"
-                          sx={{ textTransform: "none" }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="small"
-                          onClick={() => handleDeleteComment(comment.id)}
-                          color="error"
-                          variant="outlined"
-                          sx={{ textTransform: "none" }}
-                        >
-                          Delete
-                        </Button>
-                      </Box>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography
-                    variant="body2"
-                    color="textSecondary"
-                    sx={{ textAlign: "center" }}
-                  >
-                    No Comments Available
-                  </Typography>
-                )}
-              </Box>
-
-              <TextField
-                rows={4}
-                fullWidth
-                multiline
-                sx={{ mb: 2 }}
-                variant="outlined"
-                value={newComment}
-                label="Your Comment"
-                onChange={(e) => setNewComment(e.target.value)}
-              />
-            </DialogContent>
-
-            <Divider />
-
-            <DialogActions sx={{ py: 2 }}>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setCommentDialogOpen(false);
-                }}
-                sx={{ color: "#333", textTransform: "none" }}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="primary"
-                variant="contained"
-                onClick={handleCommentSubmit}
-                sx={{ textTransform: "none" }}
-              >
-                {editComment ? "Update" : "Submit"}
-              </Button>
-            </DialogActions>
-          </Dialog>
 
           <Dialog
             fullWidth
@@ -445,6 +302,120 @@ const ResourceCard = ({ resource, onResourceUpdated }) => {
           </Dialog>
         </Card>
       ))}
+
+      <Dialog open={open} onClose={handleClose} fullWidth>
+        <DialogTitle
+          sx={{ bgcolor: "#f5f5f5", color: "#333", textAlign: "center" }}
+        >
+          {editComment ? "Edit Your Comment" : "Add a Comment"}
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent dividers sx={{ py: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            {comments.length > 0 ? (
+              comments.map((item) => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    mb: 2,
+                    bgcolor: "#f9f9f9",
+                    p: 2,
+                    borderRadius: 1,
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <CardHeader
+                      avatar={
+                        <Avatar
+                          aria-label="resource"
+                          sx={{ bgcolor: "#8e24aa" }}
+                        >
+                          {item.userName?.charAt(0)}
+                        </Avatar>
+                      }
+                    />
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ fontWeight: "bold" }}
+                      >
+                        {item.userName}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="textSecondary"
+                        sx={{ mb: 1 }}
+                      >
+                        {item.comment}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box
+                    sx={{
+                      gap: 1,
+                      display: "flex",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    {user && user.displayName === item.userName && (
+                      <>
+                        <Button
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ textTransform: "none" }}
+                          onClick={() => handleEdit(item)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          sx={{ textTransform: "none" }}
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+                </Box>
+              ))
+            ) : (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                sx={{ textAlign: "center" }}
+              >
+                No Comments Available
+              </Typography>
+            )}
+          </Box>
+
+          <TextField
+            rows={4}
+            fullWidth
+            multiline
+            value={comment}
+            variant="outlined"
+            label={editComment ? "Edit Your Comment" : "Your Comment"}
+            onChange={(e) => setComment(e.target.value)}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleClose} color="error">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="primary">
+            {editComment ? "Update Comment" : "Add Comment"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
