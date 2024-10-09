@@ -159,10 +159,20 @@ const Header = () => {
           Are you sure you want to log out?
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleLogoutDialogClose} color="primary">
+          <Button
+            size="medium"
+            color="primary"
+            variant="outlined"
+            onClick={handleLogoutDialogClose}
+          >
             Cancel
           </Button>
-          <Button onClick={handleLogout} color="error">
+          <Button
+            size="medium"
+            color="error"
+            variant="outlined"
+            onClick={handleLogout}
+          >
             Logout
           </Button>
         </DialogActions>
