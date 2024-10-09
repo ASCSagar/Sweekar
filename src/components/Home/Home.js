@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useLoadScript } from "@react-google-maps/api";
 import {
   Box,
   Card,
@@ -11,11 +13,9 @@ import {
   Button,
   Divider,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import PhoneIcon from "@mui/icons-material/Phone";
 import PlaceIcon from "@mui/icons-material/Place";
-import { GoogleMap, useLoadScript } from "@react-google-maps/api";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
@@ -43,6 +43,7 @@ const Home = () => {
     libraries: ["places"],
   });
 
+  // UseEffect to handle user location and fetching resources
   useEffect(() => {
     if (navigator.geolocation && isLoaded) {
       navigator.geolocation.getCurrentPosition(
@@ -51,15 +52,19 @@ const Home = () => {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
+          console.log("User location fetched successfully:", userPos);
           setUserLocation(userPos);
           fetchResources(userPos);
         },
         (error) => {
           console.error("Error getting user location:", error);
-          setUserLocation(defaultCenter);
+          setUserLocation(defaultCenter); // Fallback to default center
           fetchResources(defaultCenter);
         }
       );
+    } else if (isLoaded) {
+      setUserLocation(defaultCenter); // Fallback if geolocation isn't supported
+      fetchResources(defaultCenter);
     }
   }, [isLoaded]);
 
@@ -84,10 +89,11 @@ const Home = () => {
 
       service.nearbySearch(request, (results, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-          fetchedResources[place?.name] =
+          console.log(`Results for ${place.name}:`, results);
+          fetchedResources[place.name] =
             results?.length > 0 ? results[0] : null; // Store the nearest result
         }
-        if (Object.keys(fetchedResources)?.length === placeTypes?.length) {
+        if (Object.keys(fetchedResources)?.length === placeTypes.length) {
           setResources(fetchedResources);
           setLoading(false);
         }
@@ -108,13 +114,15 @@ const Home = () => {
     setExpanded((prevState) => ({ ...prevState, [index]: !prevState[index] }));
   };
 
+  // Handle loading and error cases
   if (loadError) return <div>Error loading maps</div>;
-  if (loading || !isLoaded)
+  if (loading || !isLoaded || !userLocation) {
     return (
       <Box sx={{ textAlign: "center", marginTop: 5 }}>
         <CircularProgress />
       </Box>
     );
+  }
 
   return (
     <Box
@@ -272,7 +280,7 @@ const Home = () => {
                         variant="body2"
                         sx={{ mt: 1, textAlign: "left" }}
                       >
-                        <strong>Full Address : </strong> {resource.vicinity}
+                        <strong>Full Address: </strong> {resource.vicinity}
                       </Typography>
                     </Collapse>
                   </CardContent>
@@ -281,8 +289,6 @@ const Home = () => {
             )
         )}
       </Grid>
-
-      <GoogleMap center={userLocation || defaultCenter} zoom={14} />
     </Box>
   );
 };

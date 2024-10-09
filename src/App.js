@@ -1,6 +1,8 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { Route, Routes } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Home from "./components/Home/Home";
 import Login from "./components/Login/Login";
 import Header from "./components/Header/Header";
@@ -15,6 +17,13 @@ import NotFound from "./components/NotFound/NotFound";
 function App() {
   return (
     <Box sx={{ flexGrow: 1 }}>
+      <ToastContainer
+        limit={1}
+        theme="colored"
+        autoClose={3000}
+        position="top-center"
+        className="toast-container"
+      />
       <Header />
       <Routes>
         <Route path="/login" element={<Login />} />
