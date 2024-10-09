@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { toast } from "react-toastify"; 
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import ShareIcon from "@mui/icons-material/Share";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -39,6 +40,7 @@ import Googlemap from "../../GoogleMap/GoogleMap";
 const ResourceCard = ({ resource }) => {
   const user = auth.currentUser; // Get current logged-in user
 
+  const [likes, setLikes] = useState({});
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState([]);
@@ -47,6 +49,77 @@ const ResourceCard = ({ resource }) => {
   const [editComment, setEditComment] = useState(false);
   const [currentCommentId, setCurrentCommentId] = useState(null);
   const [directionsVisible, setDirectionsVisible] = useState({});
+
+  useEffect(() => {
+    if (!user) return;
+
+    const db = getDatabase();
+    const likesRef = ref(db, "likes");
+
+    const unsubscribe = onValue(likesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setLikes(data);
+      } else {
+        setLikes({});
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleLike = (resourceName) => {
+    if (!user) {
+      toast.info("Please Log In To Like This Resource.");
+      return;
+    }
+
+    const db = getDatabase();
+    const likeRef = ref(db, `likes/${resourceName}`);
+
+    const currentLikes = likes[resourceName] || { count: 0, users: [] };
+    const userLiked = currentLikes.users.includes(user.uid);
+
+    if (userLiked) {
+      // Unlike
+      const updatedUsers = currentLikes.users.filter((uid) => uid !== user.uid);
+      const newCount = updatedUsers.length;
+
+      set(likeRef, {
+        count: newCount,
+        users: updatedUsers,
+      })
+        .then(() => {
+          setLikes((prev) => ({
+            ...prev,
+            [resourceName]: { count: newCount, users: updatedUsers },
+          }));
+          toast.success("You Unliked This Resource!");
+        })
+        .catch((error) => {
+          toast.error("Error Unliking Resource: " + error.message);
+        });
+    } else {
+      // Like
+      const updatedUsers = [...currentLikes.users, user.uid];
+      const newCount = updatedUsers.length;
+
+      set(likeRef, {
+        count: newCount,
+        users: updatedUsers,
+      })
+        .then(() => {
+          setLikes((prev) => ({
+            ...prev,
+            [resourceName]: { count: newCount, users: updatedUsers },
+          }));
+          toast.success("You Liked This Resource!");
+        })
+        .catch((error) => {
+          toast.error("Error Liking Resource: " + error.message);
+        });
+    }
+  };
 
   const handleClickOpen = (resource) => {
     setCurrentResource(resource);
@@ -141,167 +214,186 @@ const ResourceCard = ({ resource }) => {
 
   return (
     <>
-      {resource?.map((resource, index) => (
-        <Card
-          key={index}
-          sx={{
-            maxWidth: 345,
-            margin: "auto",
-            borderRadius: "10px",
-            backgroundColor: "#f5f5f5",
-            boxShadow: "5px 5px 10px #d3d3d3 ",
-            "&:hover": {
-              transform: "scale(1.05)",
-              transition: "0.3s",
-            },
-          }}
-        >
-          <CardHeader
-            avatar={
-              <Avatar aria-label="resource" sx={{ bgcolor: "#8e24aa" }}>
-                {resource.name.charAt(0)}
-              </Avatar>
-            }
-            title={resource.name}
-          />
-          {resource.photoUrl ? (
-            <CardMedia
-              component="img"
-              height="194"
-              image={resource.photoUrl}
-              alt={resource.name}
-            />
-          ) : (
-            <CardMedia
-              component="img"
-              height="194"
-              image="https://via.placeholder.com/400x300.png?text=No+Image+Available"
-              alt={resource.name}
-            />
-          )}
-
-          <CardContent>
-            <Typography
-              variant="body2"
-              sx={{ mt: 1, mb: 1, textAlign: "left" }}
-            >
-              <strong>Address : </strong> {resource.address}
-            </Typography>
-            <Divider />
-
-            <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
-              <EmailIcon sx={{ mr: 1 }} color="error" />
-              {resource.email}
-            </Box>
-
-            <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
-              <PhoneIcon sx={{ mr: 1 }} />
-              {resource.phone}
-            </Box>
-          </CardContent>
-
-          <Box
+      {resource?.map((resource, index) => {
+        const resourceLikes = likes?.[resource?.name] || {
+          count: 0,
+          users: [],
+        };
+        const isLiked = user
+          ? resourceLikes?.users?.includes(user?.uid)
+          : false;
+        return (
+          <Card
+            key={index}
             sx={{
-              p: 1,
-              display: "flex",
-              alignItems: "center",
+              maxWidth: 345,
+              margin: "auto",
+              borderRadius: "10px",
+              backgroundColor: "#f5f5f5",
+              boxShadow: "5px 5px 10px #d3d3d3 ",
+              "&:hover": {
+                transform: "scale(1.05)",
+                transition: "0.3s",
+              },
             }}
           >
-            <Tooltip title="Like">
-              <IconButton color={"error"}>
-                <FavoriteIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Comments">
-              <IconButton onClick={() => handleClickOpen(resource)}>
-                <CommentIcon color="primary" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Operating Hours">
-              <IconButton onClick={() => setShowHours(index)}>
-                <AccessTimeIcon color="warning" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Share">
-              <IconButton>
-                <ShareIcon color="success" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Directions">
-              <IconButton onClick={() => handleDirections(index)}>
-                <DirectionsIcon color="info" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-
-          {directionsVisible[index] && (
-            <Box sx={{ mt: 2 }}>
-              <Googlemap
-                center={{ lat: resource.lat, lng: resource.lng }}
-                destination={{ lat: resource.lat, lng: resource.lng }}
-                directions={true}
+            <CardHeader
+              avatar={
+                <Avatar aria-label="resource" sx={{ bgcolor: "#8e24aa" }}>
+                  {resource.name.charAt(0)}
+                </Avatar>
+              }
+              title={resource.name}
+            />
+            {resource.photoUrl ? (
+              <CardMedia
+                component="img"
+                height="194"
+                image={resource.photoUrl}
+                alt={resource.name}
               />
-            </Box>
-          )}
+            ) : (
+              <CardMedia
+                component="img"
+                height="194"
+                image="https://via.placeholder.com/400x300.png?text=No+Image+Available"
+                alt={resource.name}
+              />
+            )}
 
-          <Dialog
-            fullWidth
-            open={showHours === index}
-            onClose={() => setShowHours(null)}
-          >
-            <DialogTitle
+            <CardContent>
+              <Typography
+                variant="body2"
+                sx={{ mt: 1, mb: 1, textAlign: "left" }}
+              >
+                <strong>Address : </strong> {resource.address}
+              </Typography>
+              <Divider />
+
+              <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
+                <EmailIcon sx={{ mr: 1 }} color="error" />
+                {resource.email}
+              </Box>
+
+              <Box sx={{ p: 1, display: "flex", alignItems: "center" }}>
+                <PhoneIcon sx={{ mr: 1 }} />
+                {resource.phone}
+              </Box>
+            </CardContent>
+
+            <Box
               sx={{
-                bgcolor: "#f5f5f5",
-                color: "#333",
-                textAlign: "center",
-                fontWeight: "bold",
-                fontSize: "18px",
+                p: 1,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              {resource.name} Operating Hours
-            </DialogTitle>
-
-            <Divider />
-
-            <DialogContent dividers sx={{ py: 3 }}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {resource.time.split(", ").map((time, idx) => (
-                  <Typography
-                    key={idx}
-                    variant="body1"
-                    sx={{
-                      fontSize: "16px",
-                      color: "#555",
-                      textAlign: "center",
-                    }}
+              <Box>
+                <Tooltip title={isLiked ? "Unlike" : "Like"}>
+                  <IconButton
+                    onClick={() => handleLike(resource.name)}
+                    color={isLiked ? "error" : "default"}
                   >
-                    {time}
-                  </Typography>
-                ))}
+                    {isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Comments">
+                  <IconButton onClick={() => handleClickOpen(resource)}>
+                    <CommentIcon color="primary" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Operating Hours">
+                  <IconButton onClick={() => setShowHours(index)}>
+                    <AccessTimeIcon color="warning" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Share">
+                  <IconButton>
+                    <ShareIcon color="success" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Directions">
+                  <IconButton onClick={() => handleDirections(index)}>
+                    <DirectionsIcon color="info" />
+                  </IconButton>
+                </Tooltip>
               </Box>
-            </DialogContent>
 
-            <Divider />
+              <Typography variant="body2" color="secondary">
+                {resourceLikes.count}{" "}
+                {resourceLikes.count === 1 ? "like" : "likes"}
+              </Typography>
+            </Box>
 
-            <DialogActions sx={{ py: 2 }}>
-              <Button
-                onClick={() => setShowHours(null)}
-                variant="contained"
+            {directionsVisible[index] && (
+              <Box sx={{ mt: 2 }}>
+                <Googlemap
+                  center={{ lat: resource.lat, lng: resource.lng }}
+                  destination={{ lat: resource.lat, lng: resource.lng }}
+                  directions={true}
+                />
+              </Box>
+            )}
+
+            <Dialog
+              fullWidth
+              open={showHours === index}
+              onClose={() => setShowHours(null)}
+            >
+              <DialogTitle
                 sx={{
-                  bgcolor: "#1976d2",
-                  color: "#fff",
-                  "&:hover": {
-                    bgcolor: "#115293",
-                  },
-                  px: 4,
+                  bgcolor: "#f5f5f5",
+                  color: "#333",
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  fontSize: "18px",
                 }}
               >
-                Close
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Card>
-      ))}
+                {resource.name} Operating Hours
+              </DialogTitle>
+
+              <Divider />
+
+              <DialogContent dividers sx={{ py: 3 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {resource.time.split(", ").map((time, idx) => (
+                    <Typography
+                      key={idx}
+                      variant="body1"
+                      sx={{
+                        fontSize: "16px",
+                        color: "#555",
+                        textAlign: "center",
+                      }}
+                    >
+                      {time}
+                    </Typography>
+                  ))}
+                </Box>
+              </DialogContent>
+
+              <Divider />
+
+              <DialogActions sx={{ py: 2 }}>
+                <Button
+                  size="medium"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ textTransform: "none" }}
+                  onClick={() => setShowHours(null)}
+                >
+                  Close
+                </Button>
+              </DialogActions>
+            </Dialog>
+          </Card>
+        );
+      })}
 
       <Dialog open={open} onClose={handleClose} fullWidth>
         <DialogTitle
@@ -326,32 +418,48 @@ const ResourceCard = ({ resource }) => {
                     boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <CardHeader
-                      avatar={
-                        <Avatar
-                          aria-label="resource"
-                          sx={{ bgcolor: "#8e24aa" }}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <CardHeader
+                        avatar={
+                          <Avatar
+                            aria-label="resource"
+                            sx={{ bgcolor: "#8e24aa" }}
+                          >
+                            {item.userName?.charAt(0)}
+                          </Avatar>
+                        }
+                      />
+                      <Box>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: "bold" }}
                         >
-                          {item.userName?.charAt(0)}
-                        </Avatar>
-                      }
-                    />
-                    <Box>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ fontWeight: "bold" }}
-                      >
-                        {item.userName}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="textSecondary"
-                        sx={{ mb: 1 }}
-                      >
-                        {item.comment}
-                      </Typography>
+                          {item.userName}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          color="textSecondary"
+                          sx={{ mb: 1 }}
+                        >
+                          {item.comment}
+                        </Typography>
+                      </Box>
                     </Box>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      sx={{ mb: 1 }}
+                    >
+                      {item.time}
+                    </Typography>
                   </Box>
                   <Box
                     sx={{
@@ -363,7 +471,7 @@ const ResourceCard = ({ resource }) => {
                     {user && user.displayName === item.userName && (
                       <>
                         <Button
-                          size="small"
+                          size="medium"
                           color="primary"
                           variant="outlined"
                           sx={{ textTransform: "none" }}
@@ -372,7 +480,7 @@ const ResourceCard = ({ resource }) => {
                           Edit
                         </Button>
                         <Button
-                          size="small"
+                          size="medium"
                           color="error"
                           variant="outlined"
                           sx={{ textTransform: "none" }}
@@ -408,10 +516,22 @@ const ResourceCard = ({ resource }) => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleClose} color="error">
+          <Button
+            size="medium"
+            color="error"
+            variant="outlined"
+            onClick={handleClose}
+            sx={{ textTransform: "none" }}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="primary">
+          <Button
+            size="medium"
+            color="primary"
+            variant="outlined"
+            onClick={handleSubmit}
+            sx={{ textTransform: "none" }}
+          >
             {editComment ? "Update Comment" : "Add Comment"}
           </Button>
         </DialogActions>

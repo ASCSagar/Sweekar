@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import {
@@ -18,6 +18,8 @@ const Login = () => {
   // Initialize Google Provider
   const googleProvider = new GoogleAuthProvider();
   const navigate = useNavigate();
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
 
   // Function to handle Google sign-in
   const handleGoogleSignIn = async () => {
@@ -41,6 +43,39 @@ const Login = () => {
         errorMessage,
         email
       );
+    }
+  };
+
+  // Listen for the 'beforeinstallprompt' event
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setDeferredPrompt(event); // Save the event for later use
+      setShowInstallButton(true); // Show install button
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () =>
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+  }, []);
+
+  // Function to handle PWA installation
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === "accepted") {
+          console.log("User accepted the install prompt");
+        } else {
+          console.log("User dismissed the install prompt");
+        }
+        setDeferredPrompt(null);
+        setShowInstallButton(false);
+      });
     }
   };
 
@@ -110,9 +145,16 @@ const Login = () => {
         </CardActions>
       </Card>
 
-      <Button variant="outlined" color="success" sx={{ mt: 3 }}>
-        Install App
-      </Button>
+      {showInstallButton && (
+        <Button
+          variant="outlined"
+          color="success"
+          sx={{ mt: 3 }}
+          onClick={handleInstallClick}
+        >
+          Install App
+        </Button>
+      )}
     </Box>
   );
 };
