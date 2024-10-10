@@ -35,11 +35,10 @@ import {
   remove,
 } from "firebase/database";
 import { auth } from "../../../firebase";
-import Googlemap from "../../GoogleMap/GoogleMap";
 
 const ResourceCard = ({ resource }) => {
   const user = auth.currentUser;
-
+  const [userLocation, setUserLocation] = useState(null);
   const [likes, setLikes] = useState({});
   const [open, setOpen] = useState(false);
   const [comment, setComment] = useState("");
@@ -49,8 +48,22 @@ const ResourceCard = ({ resource }) => {
   const [openHours, setOpenHours] = useState(false);
   const [editComment, setEditComment] = useState(false);
   const [currentCommentId, setCurrentCommentId] = useState(null);
-  const [directionsVisible, setDirectionsVisible] = useState(false);
-  const [directionsResource, setDirectionsResource] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Error getting location: ", error);
+        }
+      );
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -208,13 +221,14 @@ const ResourceCard = ({ resource }) => {
   };
 
   const handleDirections = (resource) => {
-    setDirectionsResource(resource);
-    setDirectionsVisible(true);
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation?.lat},${userLocation?.lng}&destination=${resource?.lat},${resource?.lng}`;
+    window.open(url, "_blank");
   };
 
-  const handleCloseDirections = () => {
-    setDirectionsVisible(false);
-    setDirectionsResource(null);
+  const handleShareResource = (resource) => {
+    const message = `Resource Name: ${resource?.name}\nAddress: ${resource?.address}\nPhone: ${resource?.phone}\nLocation: https://www.google.com/maps?q=${resource?.lat},${resource?.lng}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   const handleShowHours = (resource) => {
@@ -328,7 +342,7 @@ const ResourceCard = ({ resource }) => {
                 </Tooltip>
 
                 <Tooltip title="Share">
-                  <IconButton>
+                  <IconButton onClick={() => handleShareResource(resource)}>
                     <ShareIcon color="success" />
                   </IconButton>
                 </Tooltip>
@@ -392,33 +406,6 @@ const ResourceCard = ({ resource }) => {
             sx={{ textTransform: "none" }}
             onClick={handleCloseHours}
           >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={directionsVisible}
-        onClose={handleCloseDirections}
-        fullWidth
-      >
-        <DialogTitle>Directions to {directionsResource?.name}</DialogTitle>
-        <Divider />
-        <DialogContent>
-          <Googlemap
-            center={{
-              lat: directionsResource?.lat,
-              lng: directionsResource?.lng,
-            }}
-            destination={{
-              lat: directionsResource?.lat,
-              lng: directionsResource?.lng,
-            }}
-            directions={true}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDirections} color="primary">
             Close
           </Button>
         </DialogActions>
