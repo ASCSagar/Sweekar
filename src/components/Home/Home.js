@@ -12,6 +12,9 @@ import {
   Collapse,
   Button,
   Divider,
+  CardHeader,
+  Avatar,
+  IconButton,
 } from "@mui/material";
 import DirectionsIcon from "@mui/icons-material/Directions";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -43,11 +46,17 @@ const Home = () => {
     libraries: ["places"],
   });
 
-  // UseEffect to handle user location and fetching resources
   useEffect(() => {
     if (navigator.geolocation && isLoaded) {
+      const locationTimeout = setTimeout(() => {
+        // Fallback if location takes too long
+        setUserLocation(defaultCenter);
+        fetchResources(defaultCenter);
+      }, 5000); // Timeout after 5 seconds
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(locationTimeout); // Clear timeout if location is fetched
           const userPos = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -58,6 +67,7 @@ const Home = () => {
         },
         (error) => {
           console.error("Error getting user location:", error);
+          clearTimeout(locationTimeout); // Ensure timeout is cleared
           setUserLocation(defaultCenter); // Fallback to default center
           fetchResources(defaultCenter);
         }
@@ -78,27 +88,38 @@ const Home = () => {
     const service = new window.google.maps.places.PlacesService(
       document.createElement("div")
     );
-    const fetchedResources = {};
 
-    placeTypes.forEach((place) => {
-      const request = {
-        location,
-        radius: "10000", // Increased radius to 10 km
-        type: place.type,
-      };
+    const resourceRequests = placeTypes.map((place) => {
+      return new Promise((resolve) => {
+        const request = {
+          location,
+          radius: "10000", // Increased radius to 10 km
+          type: place.type,
+        };
 
-      service.nearbySearch(request, (results, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-          console.log(`Results for ${place.name}:`, results);
-          fetchedResources[place.name] =
-            results?.length > 0 ? results[0] : null; // Store the nearest result
-        }
-        if (Object.keys(fetchedResources)?.length === placeTypes.length) {
-          setResources(fetchedResources);
-          setLoading(false);
-        }
+        service.nearbySearch(request, (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+            console.log(`Results for ${place.name}:`, results);
+            resolve({ [place.name]: results?.length > 0 ? results[0] : null });
+          } else {
+            resolve({ [place.name]: null });
+          }
+        });
       });
     });
+
+    Promise.all(resourceRequests)
+      .then((results) => {
+        const fetchedResources = results.reduce((acc, curr) => {
+          return { ...acc, ...curr };
+        }, {});
+        setResources(fetchedResources);
+        setLoading(false); // Ensure loading stops after fetching resources
+      })
+      .catch((error) => {
+        console.error("Error fetching resources:", error);
+        setLoading(false);
+      });
   };
 
   const handleDirections = (resource) => {
@@ -128,165 +149,170 @@ const Home = () => {
     <Box
       sx={{
         textAlign: "center",
-        padding: "2rem",
-        backgroundColor: "#f5f5f5",
-        height: "100vh",
+        padding: { xs: "1rem", sm: "2rem" },
+        minHeight: "100vh",
       }}
     >
       <Typography
         variant="h4"
         gutterBottom
-        sx={{ marginTop: 4, color: "#6A1B9A" }}
+        sx={{ marginTop: 2, color: "#6A1B9A" }}
       >
-        Welcome to Sweekar
+        Welcome To Sweekar
       </Typography>
       <Typography variant="subtitle1" gutterBottom sx={{ marginBottom: 4 }}>
-        Empowering communities with valuable resources
+        Empowering Communities With Valuable Resources
       </Typography>
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "20px",
-          marginBottom: 14,
-        }}
+      <Grid
+        container
+        justifyContent="center"
+        spacing={2}
+        sx={{ marginBottom: { xs: 8, sm: 14 } }}
       >
-        <Card
-          onClick={() => navigate("/women-resources")}
-          sx={{
-            width: "150px",
-            height: "150px",
-            backgroundColor: "#EC407A",
-            color: "#fff",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            "&:hover": {
-              transform: "scale(1.05)",
-              transition: "0.3s",
-            },
-          }}
-        >
-          <CardContent>
-            <Typography variant="h5">Women</Typography>
-          </CardContent>
-        </Card>
+        <Grid item>
+          <Card
+            onClick={() => navigate("/women-resources")}
+            sx={{
+              width: "150px",
+              height: "150px",
+              backgroundColor: "#EC407A",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
+              color: "#fff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                transform: "scale(1.05)",
+                transition: "0.3s",
+              },
+            }}
+          >
+            <CardContent>
+              <Typography variant="h5">Women</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card
-          onClick={() => navigate("/lgbtqia-resources")}
-          sx={{
-            width: "150px",
-            height: "150px",
-            backgroundColor: "#FFA726",
-            color: "#fff",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            "&:hover": {
-              transform: "scale(1.05)",
-              transition: "0.3s",
-            },
-          }}
-        >
-          <CardContent>
-            <Typography variant="h5">LGBTQIA+</Typography>
-          </CardContent>
-        </Card>
-      </Box>
+        <Grid item>
+          <Card
+            onClick={() => navigate("/lgbtqia-resources")}
+            sx={{
+              width: "150px",
+              height: "150px",
+              backgroundColor: "#FFA726",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
+              color: "#fff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              "&:hover": {
+                transform: "scale(1.05)",
+                transition: "0.3s",
+              },
+            }}
+          >
+            <CardContent>
+              <Typography variant="h5">LGBTQIA+</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-      <Grid container spacing={2} justifyContent="center">
-        {Object.entries(resources).map(
-          ([resourceType, resource], index) =>
-            resource && (
-              <Grid item key={index}>
-                <Card
-                  sx={{
-                    width: { xs: "200px", md: "300px" },
-                    height: "auto",
-                    borderRadius: "16px",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                    "&:hover": {
-                      transform: "scale(1.05)",
-                      transition: "0.3s",
-                    },
-                  }}
-                >
-                  {resource.photos ? (
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={`${resource.photos[0].getUrl({
-                        maxHeight: 300,
-                        maxWidth: 400,
-                      })}`}
-                      alt={resource.name}
-                    />
-                  ) : (
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image="https://via.placeholder.com/400x300.png?text=No+Image+Available"
-                      alt={resource.name}
-                    />
-                  )}
-                  <CardContent>
-                    <Box sx={{ p: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                        {resourceType}
-                      </Typography>
-                      <Typography variant="body2">{resource.name}</Typography>
-                    </Box>
+      <Grid
+        container
+        spacing={3}
+        sx={{ justifyContent: "center", flexWrap: "wrap" }}
+      >
+        {Object.entries(resources).map(([resourceType, resource], index) =>
+          resource ? (
+            <Grid item key={index} xs={12} sm={6} md={2}>
+              <Card
+                sx={{
+                  maxWidth: 345,
+                  margin: "auto",
+                  borderRadius: "10px",
+                  backgroundColor: "rgba(243, 239, 230, 1)",
+                  boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
+                  "&:hover": {
+                    transform: "scale(1.05)",
+                    transition: "0.3s",
+                  },
+                }}
+              >
+                <CardHeader
+                  avatar={
+                    <Avatar aria-label="resource" sx={{ bgcolor: "#8e24aa" }}>
+                      {resource.name?.charAt(0)}
+                    </Avatar>
+                  }
+                  title={resource?.name}
+                />
+                <CardMedia
+                  component="img"
+                  height="194"
+                  image={
+                    resource.photos
+                      ? resource.photos[0].getUrl()
+                      : "https://via.placeholder.com/400x300.png?text=No+Image+Available"
+                  }
+                  alt={resource.name}
+                />
+                <CardContent>
+                  <Box sx={{ p: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                      {resourceType}
+                    </Typography>
+                    <Typography variant="body2">{resource.name}</Typography>
+                  </Box>
 
-                    <Divider />
-                    <Box
-                      sx={{
-                        mt: 1,
-                        gap: "10px",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                      }}
+                  <Divider />
+                  <Box
+                    sx={{
+                      mt: 1,
+                      gap: "10px",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <PlaceIcon sx={{ color: "red" }} />
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleDirections(resource)}
                     >
-                      <PlaceIcon sx={{ color: "red" }} />
-                      <DirectionsIcon
-                        color="primary"
-                        onClick={() => handleDirections(resource)}
-                      />
-                      <PhoneIcon />{" "}
-                      {resource.formatted_phone_number
-                        ? `${resource.formatted_phone_number}`
-                        : "Not Available"}
-                    </Box>
+                      <DirectionsIcon />
+                    </IconButton>
+                    <PhoneIcon />
+                    <Typography variant="body2">
+                      {resource.formatted_phone_number || "Not Available"}
+                    </Typography>
+                  </Box>
 
-                    <Button
-                      onClick={() => toggleExpand(index)}
-                      endIcon={
-                        expanded[index] ? (
-                          <ExpandLessIcon />
-                        ) : (
-                          <ExpandMoreIcon />
-                        )
-                      }
-                      sx={{ mt: 2, color: "#6A1B9A" }}
+                  <Button
+                    onClick={() => toggleExpand(index)}
+                    endIcon={
+                      expanded[index] ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                    }
+                    sx={{ mt: 2, color: "#6A1B9A" }}
+                  >
+                    {expanded[index] ? "Show Less" : "More Details"}
+                  </Button>
+
+                  <Collapse in={expanded[index]} timeout="auto" unmountOnExit>
+                    <Typography
+                      variant="body2"
+                      sx={{ mt: 1, textAlign: "left" }}
                     >
-                      {expanded[index] ? "Show Less" : "More Details"}
-                    </Button>
-
-                    <Collapse in={expanded[index]} timeout="auto" unmountOnExit>
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 1, textAlign: "left" }}
-                      >
-                        <strong>Full Address: </strong> {resource.vicinity}
-                      </Typography>
-                    </Collapse>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )
+                      <strong>Full Address: </strong> {resource.vicinity}
+                    </Typography>
+                  </Collapse>
+                </CardContent>
+              </Card>
+            </Grid>
+          ) : null
         )}
       </Grid>
     </Box>

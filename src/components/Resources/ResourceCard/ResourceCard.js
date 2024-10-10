@@ -46,9 +46,11 @@ const ResourceCard = ({ resource }) => {
   const [comments, setComments] = useState([]);
   const [currentResource, setCurrentResource] = useState(null);
   const [showHours, setShowHours] = useState(null);
+  const [openHours, setOpenHours] = useState(false);
   const [editComment, setEditComment] = useState(false);
   const [currentCommentId, setCurrentCommentId] = useState(null);
-  const [directionsVisible, setDirectionsVisible] = useState({});
+  const [directionsVisible, setDirectionsVisible] = useState(false);
+  const [directionsResource, setDirectionsResource] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -205,11 +207,24 @@ const ResourceCard = ({ resource }) => {
     setEditComment(true);
   };
 
-  const handleDirections = (resourceId) => {
-    setDirectionsVisible((prev) => ({
-      ...prev,
-      [resourceId]: !prev[resourceId],
-    }));
+  const handleDirections = (resource) => {
+    setDirectionsResource(resource);
+    setDirectionsVisible(true);
+  };
+
+  const handleCloseDirections = () => {
+    setDirectionsVisible(false);
+    setDirectionsResource(null);
+  };
+
+  const handleShowHours = (resource) => {
+    setShowHours(resource);
+    setOpenHours(true);
+  };
+
+  const handleCloseHours = () => {
+    setOpenHours(false);
+    setShowHours(null);
   };
 
   return (
@@ -229,12 +244,13 @@ const ResourceCard = ({ resource }) => {
               maxWidth: 345,
               margin: "auto",
               borderRadius: "10px",
-              backgroundColor: "#f5f5f5",
-              boxShadow: "5px 5px 10px #d3d3d3 ",
+              backgroundColor: "rgba(243, 239, 230, 1)",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
               "&:hover": {
                 transform: "scale(1.05)",
                 transition: "0.3s",
               },
+              marginBottom: "30px",
             }}
           >
             <CardHeader
@@ -306,7 +322,7 @@ const ResourceCard = ({ resource }) => {
                 </Tooltip>
 
                 <Tooltip title="Operating Hours">
-                  <IconButton onClick={() => setShowHours(index)}>
+                  <IconButton onClick={() => handleShowHours(resource)}>
                     <AccessTimeIcon color="warning" />
                   </IconButton>
                 </Tooltip>
@@ -318,7 +334,7 @@ const ResourceCard = ({ resource }) => {
                 </Tooltip>
 
                 <Tooltip title="Directions">
-                  <IconButton onClick={() => handleDirections(index)}>
+                  <IconButton onClick={() => handleDirections(resource)}>
                     <DirectionsIcon color="info" />
                   </IconButton>
                 </Tooltip>
@@ -329,71 +345,84 @@ const ResourceCard = ({ resource }) => {
                 {resourceLikes.count === 1 ? "like" : "likes"}
               </Typography>
             </Box>
-
-            {directionsVisible[index] && (
-              <Box sx={{ mt: 2 }}>
-                <Googlemap
-                  center={{ lat: resource.lat, lng: resource.lng }}
-                  destination={{ lat: resource.lat, lng: resource.lng }}
-                  directions={true}
-                />
-              </Box>
-            )}
-
-            <Dialog
-              fullWidth
-              open={showHours === index}
-              onClose={() => setShowHours(null)}
-            >
-              <DialogTitle
-                sx={{
-                  bgcolor: "#f5f5f5",
-                  color: "#333",
-                  textAlign: "center",
-                  fontWeight: "bold",
-                  fontSize: "18px",
-                }}
-              >
-                {resource.name} Operating Hours
-              </DialogTitle>
-
-              <Divider />
-
-              <DialogContent dividers sx={{ py: 3 }}>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {resource.time.split(", ").map((time, idx) => (
-                    <Typography
-                      key={idx}
-                      variant="body1"
-                      sx={{
-                        fontSize: "16px",
-                        color: "#555",
-                        textAlign: "center",
-                      }}
-                    >
-                      {time}
-                    </Typography>
-                  ))}
-                </Box>
-              </DialogContent>
-
-              <Divider />
-
-              <DialogActions sx={{ py: 2 }}>
-                <Button
-                  size="medium"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ textTransform: "none" }}
-                  onClick={() => setShowHours(null)}
-                >
-                  Close
-                </Button>
-              </DialogActions>
-            </Dialog>
           </Card>
         );
       })}
+
+      <Dialog fullWidth open={openHours} onClose={handleCloseHours}>
+        <DialogTitle
+          sx={{
+            bgcolor: "#f5f5f5",
+            color: "#333",
+            textAlign: "center",
+            fontWeight: "bold",
+            fontSize: "18px",
+          }}
+        >
+          {resource.name} Operating Hours
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent dividers sx={{ py: 3 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {showHours?.time?.split(",")?.map((item, index) => (
+              <Typography
+                key={index}
+                variant="body1"
+                sx={{
+                  fontSize: "16px",
+                  color: "#555",
+                  textAlign: "center",
+                }}
+              >
+                {item?.trim()}
+              </Typography>
+            ))}
+          </Box>
+        </DialogContent>
+
+        <Divider />
+
+        <DialogActions sx={{ py: 2 }}>
+          <Button
+            size="medium"
+            color="primary"
+            variant="outlined"
+            sx={{ textTransform: "none" }}
+            onClick={handleCloseHours}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={directionsVisible}
+        onClose={handleCloseDirections}
+        fullWidth
+      >
+        <DialogTitle>Directions to {directionsResource?.name}</DialogTitle>
+        <Divider />
+        <DialogContent>
+          <Googlemap
+            center={{
+              lat: directionsResource?.lat,
+              lng: directionsResource?.lng,
+            }}
+            destination={{
+              lat: directionsResource?.lat,
+              lng: directionsResource?.lng,
+            }}
+            directions={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDirections} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={open} onClose={handleClose} fullWidth>
         <DialogTitle
@@ -415,7 +444,7 @@ const ResourceCard = ({ resource }) => {
                     bgcolor: "#f9f9f9",
                     p: 2,
                     borderRadius: 1,
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.1)",
+                    boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
                   }}
                 >
                   <Box

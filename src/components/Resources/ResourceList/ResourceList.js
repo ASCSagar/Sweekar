@@ -36,7 +36,7 @@ const ResourceList = () => {
           p: 2,
           borderRadius: "10px",
           backgroundColor: "#f5f5f5",
-          boxShadow: "5px 5px 10px #d3d3d3 ",
+          boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
         }}
       >
         <Googlemap category={category} onResourcesFetched={setResources} />

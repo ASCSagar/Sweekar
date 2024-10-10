@@ -65,8 +65,8 @@ const Profile = () => {
             sx={{
               overflow: "hidden",
               borderRadius: "10px",
-              backgroundColor: "#f5f5f5",
-              boxShadow: "5px 5px 10px #d3d3d3 ",
+              backgroundColor: "rgba(243, 239, 230, 1)",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
             }}
           >
             <Box
@@ -87,7 +87,7 @@ const Profile = () => {
                   width: "120px",
                   height: "120px",
                   border: "4px solid white",
-                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+                  boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
                 }}
               />
               <Typography variant="h4" sx={{ mt: 2, fontWeight: "bold" }}>
@@ -101,7 +101,7 @@ const Profile = () => {
                     <Avatar
                       sx={{
                         color: "#8e24aa",
-                        backgroundColor: "white",
+                        backgroundColor: "rgba(243, 239, 230, 1)",
                         border: "2px solid #8e24aa",
                       }}
                     >
@@ -118,7 +118,7 @@ const Profile = () => {
                     <Avatar
                       sx={{
                         color: "#8e24aa",
-                        backgroundColor: "white",
+                        backgroundColor: "rgba(243, 239, 230, 1)",
                         border: "2px solid #8e24aa",
                       }}
                     >
@@ -137,8 +137,8 @@ const Profile = () => {
             sx={{
               overflow: "hidden",
               borderRadius: "10px",
-              backgroundColor: "#f5f5f5",
-              boxShadow: "5px 5px 10px #d3d3d3 ",
+              backgroundColor: "rgba(243, 239, 230, 1)",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
             }}
           >
             <CardContent>
