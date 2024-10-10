@@ -38,7 +38,7 @@ import { auth } from "../../../firebase";
 import Googlemap from "../../GoogleMap/GoogleMap";
 
 const ResourceCard = ({ resource }) => {
-  const user = auth.currentUser; // Get current logged-in user
+  const user = auth.currentUser;
 
   const [likes, setLikes] = useState({});
   const [open, setOpen] = useState(false);
@@ -349,7 +349,7 @@ const ResourceCard = ({ resource }) => {
         );
       })}
 
-      <Dialog fullWidth open={openHours} onClose={handleCloseHours}>
+      <Dialog open={openHours} onClose={handleCloseHours}>
         <DialogTitle
           sx={{
             bgcolor: "#f5f5f5",
@@ -359,7 +359,7 @@ const ResourceCard = ({ resource }) => {
             fontSize: "18px",
           }}
         >
-          {resource.name} Operating Hours
+          {showHours?.name} Operating Hours
         </DialogTitle>
 
         <Divider />
@@ -372,7 +372,7 @@ const ResourceCard = ({ resource }) => {
                 variant="body1"
                 sx={{
                   fontSize: "16px",
-                  color: "#555",
+                  color: "black",
                   textAlign: "center",
                 }}
               >
