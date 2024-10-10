@@ -1,5 +1,11 @@
-import React, { useState } from "react";
-import { Box, Typography, Pagination, Card } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Pagination,
+  Card,
+  CircularProgress,
+} from "@mui/material";
 import { useParams } from "react-router-dom";
 import ResourceCard from "../ResourceCard/ResourceCard";
 import Googlemap from "../../GoogleMap/GoogleMap";
@@ -10,6 +16,17 @@ const ResourceList = () => {
   const itemsPerPage = 5;
   const [resources, setResources] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchResources = async () => {
+      setLoading(true);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setLoading(false);
+    };
+
+    fetchResources();
+  }, [category]);
 
   const paginateResources = resources.slice(
     (currentPage - 1) * itemsPerPage,
@@ -59,7 +76,9 @@ const ResourceList = () => {
           justifyContent: "center",
         }}
       >
-        {paginateResources.length > 0 ? (
+        {loading ? (
+          <CircularProgress />
+        ) : paginateResources.length > 0 ? (
           <ResourceCard resource={paginateResources} category={category} />
         ) : (
           <Typography variant="h6" sx={{ textAlign: "center", mt: 4 }}>
