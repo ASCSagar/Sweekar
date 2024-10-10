@@ -11,7 +11,6 @@ import LGBTQIAResources from "./components/Resources/LGBTQIA";
 import WomenResources from "./components/Resources/WomenResources";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import ResourceList from "./components/Resources/ResourceList/ResourceList";
-import ResourceDetail from "./components/Resources/ResourceDetail/ResourceDetail";
 import NotFound from "./components/NotFound/NotFound";
 
 function App() {
@@ -72,14 +71,6 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/resources/:resourceId"
-          element={
-            <ProtectedRoute>
-              <ResourceDetail />
             </ProtectedRoute>
           }
         />

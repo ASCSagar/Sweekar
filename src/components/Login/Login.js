@@ -10,7 +10,9 @@ import {
   CardContent,
   CardActions,
 } from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import logo from "../../images/logo.png";
+import logo1 from "../../images/MCSLogo.png";
 import { auth } from "../../firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
@@ -18,6 +20,7 @@ const Login = () => {
   // Initialize Google Provider
   const googleProvider = new GoogleAuthProvider();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width:600px)");
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
 
@@ -86,22 +89,37 @@ const Login = () => {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        height: "100vh",
         textAlign: "center",
-        bgcolor: "#f5f5f5",
-        padding: 2,
+        padding: isMobile ? 2 : 4,
       }}
     >
+      <Avatar
+        alt="Logo"
+        src={logo1}
+        sx={{
+          width: isMobile ? 100 : 150,
+          height: isMobile ? 100 : 150,
+          border: "5px solid #e0e0e0",
+          backgroundColor: "white",
+          boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
+        }}
+      />
+      <Typography
+        variant="h5"
+        component="div"
+        sx={{ flexGrow: 1, mt: 2, mb: 2 }}
+      >
+        Initiative by Shree Maharani Chimnabai Stree Udyogalaya
+      </Typography>
       <Card
         sx={{
-          width: 400,
+          width: isMobile ? 300 : 400,
           borderRadius: 3,
-          boxShadow: 3,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: 4,
-          backgroundColor: "white",
+          padding: isMobile ? 2 : 4,
+          boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
         }}
       >
         <CardContent
@@ -116,31 +134,27 @@ const Login = () => {
             alt="Logo"
             src={logo}
             sx={{
-              width: 150,
-              height: 150,
+              width: isMobile ? 100 : 150,
+              height: isMobile ? 100 : 150,
               marginBottom: 3,
               border: "5px solid #e0e0e0",
               backgroundColor: "white",
-              boxShadow: "0px 4px 12px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
             }}
           />
 
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Welcome To Sweekar
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            Please SignIn To Continue
           </Typography>
         </CardContent>
 
         <CardActions sx={{ justifyContent: "center" }}>
           <Button
-            variant="contained"
             color="primary"
-            sx={{ width: "200px", height: "50px" }}
+            variant="outlined"
             onClick={handleGoogleSignIn}
           >
-            SignIn With Google
+            Sign In With Google
           </Button>
         </CardActions>
       </Card>

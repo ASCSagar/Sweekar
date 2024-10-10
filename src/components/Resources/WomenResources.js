@@ -130,26 +130,32 @@ const WomenResources = () => {
   };
 
   return (
-    <Box sx={{ padding: { xs: 2, sm: 4 }, backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
+    <Box sx={{ padding: { xs: 2, sm: 4 } }}>
       <Typography
         variant={isMobile ? "h5" : "h4"}
-        sx={{ textAlign: "center", color: "#6A1B9A", marginBottom: { xs: 2, sm: 4 } }}
+        sx={{
+          textAlign: "center",
+          color: "#6A1B9A",
+          marginBottom: { xs: 2, sm: 4 },
+        }}
       >
         Women Resources
       </Typography>
 
-      <Box sx={{ display: "flex", justifyContent: "center", marginBottom: { xs: 2, sm: 4 } }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: { xs: 2, sm: 4 },
+        }}
+      >
         <TextField
           fullWidth
           variant="outlined"
           placeholder="Search categories..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{
-            width: { xs: "100%", sm: "80%", md: "60%" },
-            borderRadius: "50px",
-            backgroundColor: "#ffffff",
-          }}
+          sx={{ width: "60%", borderRadius: "50px", backgroundColor: "#fff" }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -169,12 +175,15 @@ const WomenResources = () => {
                 "&:hover": {
                   transform: "scale(1.03)",
                 },
-                boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                backgroundColor: "rgba(243, 239, 230, 1)",
+                boxShadow: "0 4px 4px rgba(0, 0, 0, 0.5)",
                 borderRadius: "12px",
               }}
             >
               <CardActionArea onClick={() => handleCategoryClick(category)}>
-                <CardContent sx={{ textAlign: "center", padding: { xs: 2, sm: 3 } }}>
+                <CardContent
+                  sx={{ textAlign: "center", padding: { xs: 2, sm: 3 } }}
+                >
                   <Box sx={{ color: "#8e24aa", marginBottom: 1 }}>
                     {React.cloneElement(category.icon, {
                       fontSize: "inherit",
@@ -183,14 +192,21 @@ const WomenResources = () => {
                   </Box>
                   <Typography
                     variant="h6"
-                    sx={{ color: "#6A1B9A", fontWeight: "bold", fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                    sx={{
+                      color: "#6A1B9A",
+                      fontWeight: "bold",
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                    }}
                   >
                     {category.name}
                   </Typography>
                   <Typography
                     variant="body2"
-                    color="textSecondary"
-                    sx={{ marginTop: 1, fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                    color="black"
+                    sx={{
+                      marginTop: 1,
+                      fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                    }}
                   >
                     {category.description}
                   </Typography>

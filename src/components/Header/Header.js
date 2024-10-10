@@ -68,7 +68,11 @@ const Header = () => {
 
   return (
     <>
-      <AppBar position="sticky" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
+      <AppBar
+        position="sticky"
+        color="black"
+        sx={{ backgroundColor: "rgba(243, 239, 230, 1)" }}
+      >
         <Toolbar>
           {showBackButton && (
             <IconButton
